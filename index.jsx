@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 // Main application component
 const LifestyleIntakeQuestionnaire = () => {
   // Application state
-  const [step, setStep] = useState('intro'); // intro, questionnaire, labs, report
+  const [step, setStep] = useState('intro');
   const [patientData, setPatientData] = useState({
+    name: '',
     history: {},
     labs: {}
   });
@@ -19,13 +20,9 @@ const LifestyleIntakeQuestionnaire = () => {
   const [categoryScores, setCategoryScores] = useState({});
   const [dataLoaded, setDataLoaded] = useState(false);
   
-  // Lifecycle - Load the data from the database
+  // Load the data
   useEffect(() => {
-    // In a real app, this would fetch from a backend
-    // Here we're using a simplified in-memory representation
     const data = getMicrohabitsData();
-    
-    // Set the application data
     setMappingData(data.mappingData);
     
     // Extract categories and subcategories
@@ -41,7 +38,7 @@ const LifestyleIntakeQuestionnaire = () => {
         .map(item => item.subcategory)));
     });
     
-    // Add the undefined category items
+    // Add items without categories
     const undefinedCats = Array.from(new Set(data.mappingData
       .filter(item => !item.category && item.subcategory)
       .map(item => item.subcategory)));
@@ -55,6 +52,14 @@ const LifestyleIntakeQuestionnaire = () => {
     setSubcategories(subCats);
     setDataLoaded(true);
   }, []);
+  
+  // Handle the patient name input
+  const handleNameChange = (name) => {
+    setPatientData(prev => ({
+      ...prev,
+      name
+    }));
+  };
   
   // Handle the patient history input changes
   const handleHistoryChange = (input, value) => {
@@ -117,7 +122,6 @@ const LifestyleIntakeQuestionnaire = () => {
         
         scores[category][subcategory]++;
         
-        // Add this entry to our matched entries
         matchedEntries.push({
           ...entry,
           key: entryKey
@@ -134,8 +138,6 @@ const LifestyleIntakeQuestionnaire = () => {
         }
         
         // Add recommendation using Map to avoid duplicates
-        // Use a composite key of recommendation text + condition to ensure 
-        // we maintain direct mapping between input and recommendation
         const recKey = `${entry.recommendation}|${entry.condition}`;
         if (entry.recommendation && !recommendationMap.has(recKey)) {
           recommendationMap.set(recKey, {
@@ -145,7 +147,7 @@ const LifestyleIntakeQuestionnaire = () => {
             condition: entry.condition,
             notes: entry.notes,
             indications: entry.indications,
-            source: entry.historyInput || entry.labInput  // Add source for traceability
+            source: entry.historyInput || entry.labInput
           });
         }
       }
@@ -174,6 +176,7 @@ const LifestyleIntakeQuestionnaire = () => {
   // Restart the questionnaire
   const restartQuestionnaire = () => {
     setPatientData({
+      name: '',
       history: {},
       labs: {}
     });
@@ -192,10 +195,20 @@ const LifestyleIntakeQuestionnaire = () => {
       case 'intro':
         return (
           <IntroScreen 
-            onStart={() => setStep('questionnaire')}
+            onStart={() => setStep('patient-info')}
           />
         );
       
+      case 'patient-info':
+        return (
+          <PatientInfoForm
+            patientName={patientData.name}
+            onNameChange={handleNameChange}
+            onNext={() => setStep('questionnaire')}
+            onBack={() => setStep('intro')}
+          />
+        );
+        
       case 'questionnaire':
         return (
           <QuestionnaireForm
@@ -205,7 +218,7 @@ const LifestyleIntakeQuestionnaire = () => {
             subcategories={subcategories}
             onHistoryChange={handleHistoryChange}
             onNext={() => setStep('labs')}
-            onBack={() => setStep('intro')}
+            onBack={() => setStep('patient-info')}
           />
         );
       
@@ -237,19 +250,351 @@ const LifestyleIntakeQuestionnaire = () => {
   
   // Main render
   return (
-    <div className="min-h-screen bg-gray-50">
-      {dataLoaded ? (
-        <div className="container mx-auto px-4 py-8">
-          {renderStep()}
+    <div className="min-h-screen bg-[#FDF6ED]">
+      <style jsx>{`
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap');
+        .font-script {
+          font-family: 'Dancing Script', cursive;
+        }
+      `}</style>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center mb-8">
+          <Logo />
         </div>
-      ) : (
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4">Loading...</h2>
-            <p>Preparing your lifestyle questionnaire</p>
+        
+        {dataLoaded ? (
+          <div>{renderStep()}</div>
+        ) : (
+          <div className="flex justify-center items-center min-h-screen">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-4 text-[#E19393]">Loading...</h2>
+              <p className="text-gray-800">Preparing your lifestyle questionnaire</p>
+            </div>
           </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Logo component
+const Logo = () => (
+  <div className="text-center mx-auto mb-8">
+    <div className="w-72 h-72 relative mx-auto">
+      {/* Sunburst rays */}
+      {Array.from({ length: 36 }).map((_, i) => (
+        <div 
+          key={i} 
+          style={{ 
+            transform: `rotate(${i * 10}deg)`,
+            background: '#F8E7CF',
+            position: 'absolute',
+            width: '2px',
+            height: i % 2 === 0 ? '130px' : '115px',
+            top: 'calc(50% - ' + (i % 2 === 0 ? '65px' : '57.5px') + ')',
+            left: 'calc(50% - 1px)'
+          }}
+        ></div>
+      ))}
+      
+      {/* Center circle */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-24 h-24 rounded-full bg-[#FDF6ED] opacity-80"></div>
+      </div>
+      
+      {/* Text overlay */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <h1 className="font-script text-5xl text-[#E19393] z-10 whitespace-nowrap" style={{transform: "translateY(25px)"}}>
+          Dr. Angelina Yee MD
+        </h1>
+      </div>
+    </div>
+    <p className="text-gray-800 text-lg -mt-12">Lifestyle & Functional Medicine</p>
+  </div>
+);
+
+// Introduction screen component
+const IntroScreen = ({ onStart }) => {
+  return (
+    <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8 border border-gray-200">
+      <h1 className="text-3xl font-bold text-center mb-6 text-[#E19393]">Lifestyle Microhabits Assessment</h1>
+      <div className="text-center mb-8">
+        <p className="text-lg mb-4 text-gray-800">
+          Welcome to your personalized lifestyle assessment. This questionnaire will help identify
+          areas of opportunity for improving your health and wellbeing through targeted microhabits.
+        </p>
+        <p className="mb-6 text-gray-800">
+          You'll be asked a series of questions about your health history and lifestyle. 
+          We'll also collect any lab values you may have. Based on your responses, 
+          we'll generate a personalized report with recommendations.
+        </p>
+      </div>
+      <div className="flex justify-center items-center space-x-4 mb-8">
+        <div className="flex flex-col items-center p-4 bg-[#FDF6ED] rounded-lg w-40 border border-[#E19393] shadow-sm">
+          <div className="text-3xl text-[#E19393] mb-2">1</div>
+          <div className="text-center font-medium text-gray-800">Patient Info</div>
         </div>
-      )}
+        <div className="text-[#E19393]">→</div>
+        <div className="flex flex-col items-center p-4 bg-[#FDF6ED] rounded-lg w-40 border border-[#E19393] shadow-sm">
+          <div className="text-3xl text-[#E19393] mb-2">2</div>
+          <div className="text-center font-medium text-gray-800">Health History</div>
+        </div>
+        <div className="text-[#E19393]">→</div>
+        <div className="flex flex-col items-center p-4 bg-[#FDF6ED] rounded-lg w-40 border border-[#E19393] shadow-sm">
+          <div className="text-3xl text-[#E19393] mb-2">3</div>
+          <div className="text-center font-medium text-gray-800">Lab Values</div>
+        </div>
+        <div className="text-[#E19393]">→</div>
+        <div className="flex flex-col items-center p-4 bg-[#FDF6ED] rounded-lg w-40 border border-[#E19393] shadow-sm">
+          <div className="text-3xl text-[#E19393] mb-2">4</div>
+          <div className="text-center font-medium text-gray-800">Recommendations</div>
+        </div>
+      </div>
+      <div className="text-center">
+        <button
+          onClick={onStart}
+          className="bg-[#E19393] hover:bg-[#d78080] text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300 ease-in-out"
+        >
+          Begin Assessment
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Patient info form component
+const PatientInfoForm = ({ patientName, onNameChange, onNext, onBack }) => {
+  return (
+    <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      <h2 className="text-2xl font-bold mb-6 text-[#E19393]">Patient Information</h2>
+      
+      <div className="mb-6">
+        <label className="block text-gray-700 font-medium mb-2" htmlFor="patient-name">
+          Full Name
+        </label>
+        <input
+          type="text"
+          id="patient-name"
+          className="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-[#E19393]"
+          value={patientName}
+          onChange={(e) => onNameChange(e.target.value)}
+          placeholder="Enter your full name"
+        />
+      </div>
+      
+      <div className="flex justify-between mt-8">
+        <button
+          onClick={onBack}
+          className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg"
+        >
+          Back
+        </button>
+        <button
+          onClick={onNext}
+          className="bg-[#E19393] hover:bg-[#d78080] text-white font-bold py-2 px-6 rounded-lg"
+          disabled={!patientName.trim()}
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Questionnaire form component
+const QuestionnaireForm = ({ 
+  mappingData, 
+  patientData, 
+  categories,
+  subcategories,
+  onHistoryChange, 
+  onNext,
+  onBack 
+}) => {
+  const [expandedCategory, setExpandedCategory] = useState('Lifestyle');
+  
+  // Helper function to properly format text
+  const formatText = (text) => {
+    // Capitalize first letter
+    let formattedText = text.charAt(0).toUpperCase() + text.slice(1);
+    
+    // Replace abbreviations
+    formattedText = formattedText
+      .replace(/BM's/g, "bowel movements")
+      .replace(/GERD/g, "acid reflux")
+      .replace(/IBS/g, "irritable bowel syndrome")
+      .replace(/SAD diet/g, "Standard American Diet")
+      .replace(/Dx/g, "Diagnosed")
+      .replace(/Hx/g, "History")
+      .replace(/PMR/g, "Progressive Muscle Relaxation");
+      
+    return formattedText;
+  };
+
+  // Get all unique history inputs
+  const historyInputs = Array.from(new Set(
+    mappingData
+      .filter(item => item.historyInput)
+      .map(item => ({ 
+        text: formatText(item.historyInput),
+        originalText: item.historyInput,
+        category: item.category || 'Lifestyle',
+        subcategory: item.subcategory || 'General'
+      }))
+  ));
+  
+  // Group history inputs by subcategory
+  const groupedInputs = {};
+  
+  historyInputs.forEach(input => {
+    const category = input.category;
+    const subcategory = input.subcategory;
+    
+    if (!groupedInputs[category]) {
+      groupedInputs[category] = {};
+    }
+    
+    if (!groupedInputs[category][subcategory]) {
+      groupedInputs[category][subcategory] = [];
+    }
+    
+    groupedInputs[category][subcategory].push(input.text);
+  });
+  
+  return (
+    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      <h2 className="text-2xl font-bold mb-6 text-[#E19393]">Health History Questionnaire</h2>
+      <p className="mb-6">
+        Please check all that apply to your current health situation and lifestyle:
+      </p>
+      
+      <div className="mb-6">
+        {categories.map(category => (
+          <div key={category} className="mb-6">
+            <button
+              className="w-full flex justify-between items-center py-3 px-4 bg-[#FDF6ED] hover:bg-[#f5ede3] rounded-lg text-left font-semibold text-gray-800 border border-[#E19393] shadow-sm"
+              onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
+            >
+              <span>{category}</span>
+              <span>{expandedCategory === category ? '−' : '+'}</span>
+            </button>
+            
+            {expandedCategory === category && (subcategories[category] || []).map(subcategory => {
+              const inputs = (groupedInputs[category] && groupedInputs[category][subcategory]) || [];
+              
+              if (inputs.length === 0) return null;
+              
+              return (
+                <div key={subcategory} className="mt-4 mb-6 pl-4">
+                  <h3 className="text-lg font-medium mb-3 text-[#E19393]">{subcategory}</h3>
+                  <div className="space-y-2 pl-4">
+                    {inputs.map(input => (
+                      <div key={input} className="flex items-start">
+                        <input
+                          type="checkbox"
+                          id={`history-${input}`}
+                          className="mt-1"
+                          checked={!!patientData.history[input.originalText]}
+                          onChange={(e) => onHistoryChange(input.originalText, e.target.checked)}
+                        />
+                        <label htmlFor={`history-${input}`} className="ml-2 text-gray-800">
+                          {input.text}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      
+      <div className="flex justify-between mt-8">
+        <button
+          onClick={onBack}
+          className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg"
+        >
+          Back
+        </button>
+        <button
+          onClick={onNext}
+          className="bg-[#E19393] hover:bg-[#d78080] text-white font-bold py-2 px-6 rounded-lg"
+        >
+          Continue to Lab Values
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Labs form component
+const LabsForm = ({ mappingData, patientData, onLabChange, onGenerate, onBack }) => {
+  // Helper function to properly format text
+  const formatLabText = (text) => {
+    // Make first letter uppercase
+    let formattedText = text.charAt(0).toUpperCase() + text.slice(1);
+    
+    // Replace abbreviations and expand
+    formattedText = formattedText
+      .replace(/Vit D/g, "Vitamin D")
+      .replace(/DHEA/g, "DHEA (Dehydroepiandrosterone)")
+      .replace(/A1C/g, "Hemoglobin A1C")
+      .replace(/TSH/g, "Thyroid Stimulating Hormone")
+      .replace(/TG/g, "Triglycerides")
+      .replace(/total chol/g, "Total Cholesterol");
+      
+    return formattedText;
+  };
+  
+  // Get all unique lab inputs
+  const labInputs = Array.from(new Set(
+    mappingData
+      .filter(item => item.labInput)
+      .map(item => ({
+        text: formatLabText(item.labInput),
+        originalText: item.labInput
+      }))
+  ));
+  
+  return (
+    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8 border border-gray-200">
+      <h2 className="text-2xl font-bold mb-6 text-[#E19393]">Lab Values</h2>
+      <p className="mb-6 text-gray-800">
+        Please check any lab values that apply based on your most recent test results:
+      </p>
+      
+      <div className="space-y-4">
+        {labInputs.map(input => (
+          <div key={input.originalText} className="flex items-start">
+            <input
+              type="checkbox"
+              id={`lab-${input.originalText}`}
+              className="mt-1"
+              checked={!!patientData.labs[input.originalText]}
+              onChange={(e) => onLabChange(input.originalText, e.target.checked)}
+            />
+            <label htmlFor={`lab-${input.originalText}`} className="ml-2 text-gray-800">
+              {input.text}
+            </label>
+          </div>
+        ))}
+      </div>
+      
+      <div className="flex justify-between mt-8">
+        <button
+          onClick={onBack}
+          className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg"
+        >
+          Back
+        </button>
+        <button
+          onClick={onGenerate}
+          className="bg-[#E19393] hover:bg-[#d78080] text-white font-bold py-2 px-6 rounded-lg"
+        >
+          Generate Report
+        </button>
+      </div>
     </div>
   );
 };
@@ -287,9 +632,11 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
   
   return (
     <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg">
-      <div className="p-6 bg-indigo-700 rounded-t-lg">
-        <h2 className="text-2xl font-bold text-white mb-2">Your Personalized Health Report</h2>
-        <p className="text-indigo-100">
+      <div className="p-6 bg-[#E19393] rounded-t-lg">
+        <h2 className="text-2xl font-bold text-white mb-2">
+          {patientData.name}'s Personalized Health Report
+        </h2>
+        <p className="text-white opacity-90">
           Based on your {totalSelected} selected items, we've identified specific areas for improvement with tailored recommendations.
         </p>
       </div>
@@ -299,7 +646,7 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
           <button
             className={`px-6 py-4 text-sm font-medium ${
               activeTab === 'summary' 
-                ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                ? 'border-b-2 border-[#E19393] text-[#E19393]' 
                 : 'text-gray-500 hover:text-gray-700'
             }`}
             onClick={() => setActiveTab('summary')}
@@ -309,7 +656,7 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
           <button
             className={`px-6 py-4 text-sm font-medium ${
               activeTab === 'conditions' 
-                ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                ? 'border-b-2 border-[#E19393] text-[#E19393]' 
                 : 'text-gray-500 hover:text-gray-700'
             }`}
             onClick={() => setActiveTab('conditions')}
@@ -319,17 +666,17 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
           <button
             className={`px-6 py-4 text-sm font-medium ${
               activeTab === 'recommendations' 
-                ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                ? 'border-b-2 border-[#E19393] text-[#E19393]' 
                 : 'text-gray-500 hover:text-gray-700'
             }`}
             onClick={() => setActiveTab('recommendations')}
           >
-            Detailed Recommendations
+            Recommendations
           </button>
           <button
             className={`px-6 py-4 text-sm font-medium ${
               activeTab === 'direct' 
-                ? 'border-b-2 border-indigo-500 text-indigo-600' 
+                ? 'border-b-2 border-[#E19393] text-[#E19393]' 
                 : 'text-gray-500 hover:text-gray-700'
             }`}
             onClick={() => setActiveTab('direct')}
@@ -342,7 +689,7 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
       <div className="p-8">
         {activeTab === 'summary' && (
           <div>
-            <h3 className="text-xl font-bold mb-4">Health Overview</h3>
+            <h3 className="text-xl font-bold mb-4 text-[#E19393]">Health Overview</h3>
             
             {recommendations.length > 0 ? (
               <>
@@ -359,14 +706,14 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
                     const percent = Math.min(100, Math.max(10, (score / 10) * 100));
                     
                     return (
-                      <div key={category} className="bg-gray-50 rounded-lg p-4">
+                      <div key={category} className="bg-[#FDF6ED] rounded-lg p-4">
                         <div className="flex justify-between mb-2">
                           <span className="font-medium">{category}</span>
-                          <span className="text-indigo-600 font-semibold">{score} items</span>
+                          <span className="text-[#E19393] font-semibold">{score} items</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2.5">
                           <div 
-                            className="bg-indigo-600 h-2.5 rounded-full" 
+                            className="bg-[#E19393] h-2.5 rounded-full" 
                             style={{ width: `${percent}%` }}
                           ></div>
                         </div>
@@ -396,16 +743,16 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
         
         {activeTab === 'conditions' && (
           <div>
-            <h3 className="text-xl font-bold mb-4">Identified Conditions & Triggers</h3>
+            <h3 className="text-xl font-bold mb-4 text-[#E19393]">Identified Conditions & Triggers</h3>
             
             {conditions.length > 0 ? (
               <div className="space-y-6">
                 {conditions.map((condition, index) => (
                   <div 
                     key={index} 
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-[#FDF6ED]"
                   >
-                    <h4 className="font-semibold text-indigo-700">{condition.name}</h4>
+                    <h4 className="font-semibold text-[#E19393]">{condition.name}</h4>
                     <div className="mt-2 text-sm">
                       <div className="text-gray-500 flex items-center gap-1">
                         <span className="font-medium">Category:</span> {condition.category} {condition.subcategory && `/ ${condition.subcategory}`}
@@ -429,13 +776,13 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
         
         {activeTab === 'recommendations' && (
           <div>
-            <h3 className="text-xl font-bold mb-4">Detailed Recommendations</h3>
+            <h3 className="text-xl font-bold mb-4 text-[#E19393]">Detailed Recommendations</h3>
             
             {recommendations.length > 0 ? (
               <div className="space-y-8">
                 {Object.entries(groupedRecommendations).map(([category, subcats]) => (
                   <div key={category} className="border-b border-gray-200 pb-6 last:border-0">
-                    <h4 className="text-lg font-semibold text-indigo-700 mb-4">{category}</h4>
+                    <h4 className="text-lg font-semibold text-[#E19393] mb-4">{category}</h4>
                     
                     {Object.entries(subcats).map(([subcategory, recs]) => (
                       <div key={subcategory} className="mb-6 last:mb-0">
@@ -443,7 +790,7 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
                         
                         <div className="space-y-4 pl-4">
                           {recs.map((rec, index) => (
-                            <div key={index} className="bg-gray-50 rounded-lg p-4">
+                            <div key={index} className="bg-[#FDF6ED] rounded-lg p-4">
                               <div className="font-medium">{rec.text}</div>
                               
                               {rec.condition && (
@@ -481,19 +828,19 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
         
         {activeTab === 'direct' && (
           <div>
-            <h3 className="text-xl font-bold mb-4">Direct Mapping: Inputs to Recommendations</h3>
+            <h3 className="text-xl font-bold mb-4 text-[#E19393]">Direct Mapping: Inputs to Recommendations</h3>
             
             {matchedEntries && matchedEntries.length > 0 ? (
               <div className="space-y-6">
                 {matchedEntries.map((entry, index) => (
                   <div 
                     key={index} 
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-[#FDF6ED]"
                   >
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <div className="md:col-span-2">
-                        <h5 className="font-medium text-indigo-700 mb-2">Input</h5>
-                        <div className="p-3 bg-indigo-50 rounded-lg">
+                        <h5 className="font-medium text-[#E19393] mb-2">Input</h5>
+                        <div className="p-3 bg-[#FDF6ED] rounded-lg">
                           {entry.historyInput && (
                             <div className="mb-1">
                               <span className="text-gray-600 text-sm">Patient History:</span> {entry.historyInput}
@@ -513,7 +860,7 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
                       </div>
                       
                       <div className="md:col-span-3">
-                        <h5 className="font-medium text-indigo-700 mb-2">Recommendation</h5>
+                        <h5 className="font-medium text-[#E19393] mb-2">Recommendation</h5>
                         <div className="p-3 bg-green-50 rounded-lg">
                           <div className="font-medium">{entry.recommendation}</div>
                           
@@ -544,11 +891,11 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
               </p>
             )}
             
-            <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-              <p className="font-medium text-yellow-800">
+            <div className="mt-6 p-4 bg-[#FDF6ED] rounded-lg">
+              <p className="font-medium text-[#E19393]">
                 Total inputs selected: {totalSelected} | Total recommendations: {matchedEntries?.length || 0}
               </p>
-              <p className="text-sm text-yellow-700 mt-1">
+              <p className="text-sm text-gray-700 mt-1">
                 Each recommendation is directly tied to a specific input you provided.
               </p>
             </div>
@@ -558,9 +905,15 @@ const ReportCard = ({ reportData, categoryScores, patientData, onRestart }) => {
         <div className="mt-8 text-center">
           <button
             onClick={onRestart}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg"
+            className="bg-[#E19393] hover:bg-[#d78080] text-white font-bold py-2 px-6 rounded-lg"
           >
             Start New Assessment
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg ml-4"
+          >
+            Print Report
           </button>
         </div>
       </div>
@@ -654,34 +1007,6 @@ function getMicrohabitsData() {
         condition: "Low sleep quality",
         recommendation: "Cool dark cave (turn down thermostat, blackout blinds, ear plugs/white noise machine at 60-68 db, humidifier)"
       },
-      {
-        category: "Lifestyle",
-        subcategory: "Sleep",
-        historyInput: "trouble falling asleep",
-        condition: "Circadian Rhythm dysregulation",
-        recommendation: "wind down routine 90 min before bed (reading, stretching, journalling, meditation)"
-      },
-      {
-        category: "Lifestyle",
-        subcategory: "Sleep",
-        historyInput: "Difficult to wake up in the morning",
-        condition: "Circadian Rhythm dysregulation",
-        recommendation: "Early morning light exposure (to sunlight, glow light withing 30 min waking)"
-      },
-      {
-        category: "Lifestyle",
-        subcategory: "Sleep",
-        historyInput: "Erratic sleep schedule",
-        condition: "Circadian Rhythm dysregulation",
-        recommendation: "Consistent Bed and Wake time"
-      },
-      {
-        category: "Lifestyle",
-        subcategory: "Sleep",
-        historyInput: "Feeling tired in the afternoon",
-        condition: "Circadian Rhythm dysregulation",
-        recommendation: "Nap Protocol Before 2 PM 20-30 minutes maximum"
-      },
       
       // Movement
       {
@@ -697,28 +1022,6 @@ function getMicrohabitsData() {
         historyInput: "Doesn't like to exercise formally",
         condition: "Low activity (exercise < 3 days/week)",
         recommendation: "Non-Exercise Thermogenic Activity (NEAT) - extra movement incorpated into daily activities"
-      },
-      {
-        category: "Lifestyle",
-        subcategory: "Movement",
-        historyInput: "Beginner at movement/Wants to increase",
-        condition: "Sedentary lifestyle",
-        recommendation: "Walking program (create opportunities to walk, after dinner)"
-      },
-      {
-        category: "Lifestyle",
-        subcategory: "Movement",
-        historyInput: "Beginner at movement/wants to increase",
-        condition: "Sedentary lifestyle",
-        recommendation: "Incorporate any movement (dancing, gardening, cleaning, shopping)"
-      },
-      {
-        category: "Lifestyle",
-        subcategory: "Movement",
-        historyInput: "Fatigue throughout the day",
-        labInput: "DHEA < 3.5",
-        condition: "Excessive Exercise",
-        recommendation: "Limit prolonged cardio to 30min"
       },
       
       // Diet/Gut Health
@@ -736,29 +1039,6 @@ function getMicrohabitsData() {
         condition: "Gut dysbiosis",
         recommendation: "Add probiotics (30-100 billion CFU or fermented foods like kefir and sauerkraut"
       },
-      {
-        category: "Lifestyle",
-        subcategory: "Diet/Gut Health",
-        historyInput: "Bloating or food intolerance",
-        labInput: "posivitve thyroid Ab",
-        condition: "Bloating or food intolerance",
-        recommendation: "Gluten Free protocol/ Dairy Free protocol"
-      },
-      {
-        category: "Lifestyle",
-        subcategory: "Diet/Gut Health",
-        historyInput: "Constipation",
-        condition: "Estrogen Dominance",
-        recommendation: "ensure daily BM (hydration, Mg, movement)"
-      },
-      {
-        category: "Lifestyle",
-        subcategory: "Diet/Gut Health",
-        historyInput: "High Estrogen symptoms",
-        condition: "Estrogen Dominance",
-        recommendation: "Inc intake of cruciferous vegetables",
-        notes: "to help with estrogen metabolism"
-      },
       
       // Blood Sugar Regulation
       {
@@ -775,30 +1055,6 @@ function getMicrohabitsData() {
         condition: "Elevated A1C",
         recommendation: "Increase dietary fiber, Food order: eat vegetables then protein then carbs"
       },
-      {
-        category: "Lifestyle",
-        subcategory: "Blood Sugar Regulation",
-        labInput: "A1C > 5.2",
-        condition: "Elevated A1C",
-        recommendation: "Walk after meals"
-      },
-      
-      // Elevated Cholesterol
-      {
-        category: "Lifestyle",
-        subcategory: "Elevated Cholesterol",
-        labInput: "TG > 1.0",
-        condition: "Elevated TG",
-        recommendation: "Reduce Refined carbohydrates"
-      },
-      {
-        category: "Lifestyle",
-        subcategory: "Elevated Cholesterol",
-        labInput: "total chol > 5.2",
-        condition: "Elevated cholesterol",
-        recommendation: "Red Yeast Rice (600mg BID)",
-        notes: "natural statin"
-      },
       
       // Basic Stack
       {
@@ -807,23 +1063,6 @@ function getMicrohabitsData() {
         labInput: "Vit D < 90",
         condition: "General health support",
         recommendation: "Vitamin D3 (2,000-5,000 IU/day), Magnesium glycinate (300-400 mg), B-complex, Omega-3 (2 g EPA/DHA)"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Basic Stack",
-        historyInput: "hypothyroid",
-        labInput: "DHEA < 5.5",
-        condition: "Dysregulated cortisol/low thyroid markes",
-        recommendation: "Ashwaganda (600mg daily)",
-        indications: "helps with synthesis of thyroid hormones and adaptogen"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Basic Stack",
-        historyInput: "high cortisol symptom score",
-        condition: "High cortisol",
-        recommendation: "Phosphyltidyleserine 100-150mg daily",
-        indications: "helps with breakdown of excess cortisol"
       },
       
       // Stress Support
@@ -834,22 +1073,6 @@ function getMicrohabitsData() {
         condition: "Dysregulated cortisol",
         recommendation: "Adaptogen adrenal support: Ashwagandha (500 mg) or Rhodiola rosea, or blend"
       },
-      {
-        category: "Supplements",
-        subcategory: "Stress Support",
-        historyInput: "Stress and Fatigue",
-        condition: "Dysregulated cortisol + Brain Fog",
-        recommendation: "Schisandra 30 drops 2x/day",
-        notes: "(for liver support/cognitive support and more energy)",
-        indications: "adaptogen"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Stress Support",
-        historyInput: "Stress and poor water intake",
-        condition: "Dysregulated cortisol",
-        recommendation: "Relax Matrix to sip throughout the day"
-      },
       
       // Sleep Support
       {
@@ -858,13 +1081,6 @@ function getMicrohabitsData() {
         historyInput: "feeling unrested upon waking",
         condition: "Poor sleep quality",
         recommendation: "Magnesium glycinate, melatonin (1-3 mg), valerian root, L-theanine"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Sleep Support",
-        historyInput: "trouble falling asleep/exposure to blue light",
-        condition: "Circandian Rhythm regulation",
-        recommendation: "Melatonin at physiological dose of 0.25 - 0.5mg sublingual"
       },
       
       // Hormonal Support
@@ -875,36 +1091,6 @@ function getMicrohabitsData() {
         condition: "Low estrogen",
         recommendation: "Phytoestrogens (e.g., flaxseed, soy)"
       },
-      {
-        category: "Supplements",
-        subcategory: "Hormonal Support",
-        historyInput: "Low testosterone symptoms",
-        condition: "Low testosterone",
-        recommendation: "Zinc (15-30 mg), Tribulus terrestris"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Hormonal Support",
-        historyInput: "Estrogen imbalance symptoms/constipation/xenoestrogens",
-        condition: "Estrogen Dominance",
-        recommendation: "Ca D glucorate 500 - 1000mg/d",
-        indications: "prevents resorption of estrogen, helps with Phase II, environmental toxins"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Hormonal Support",
-        historyInput: "Estrogen imbalance symptoms",
-        condition: "Estrogen Dominance",
-        recommendation: "DIM (150 - 300mg daily)",
-        indications: "alters metabolic pathway of E metabolism (↑ 2-OH and ↓ 16-OH E), inhibits aromatase (less T to E conversion), removes excess E from cells for elimination"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Hormonal Support",
-        historyInput: "Low progesterone symptoms/PMS",
-        condition: "Low progesterone & early perimenopause",
-        recommendation: "Vitex 20-40mg/d stardarized extract or 100-400mg/d whole herb"
-      },
       
       // Thyroid Support
       {
@@ -914,155 +1100,6 @@ function getMicrohabitsData() {
         condition: "Hypothyroidism",
         recommendation: "Selenium (200 mcg), iodine rich foods (if no Hashimoto's), L-tyrosine?, ashwagandha",
         indications: "Selenium: for synthesis of thyroid hormone, conversion to T3, lowers Ab // L-tyrosine + iodine: for synthesis // ashwaghanda: thyroid hormone synthesis"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Thyroid Support",
-        labInput: "TSH > 2.0/ T3 < 4.2/ T4 < 14",
-        condition: "Underactive Thyroid",
-        recommendation: "Iron supplement every other day (if deficient)",
-        notes: "Fe metabolism creates Hepcidin which inhibits Fe absorption"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Thyroid Support",
-        labInput: "TSH > 2.0/ T3 < 4.2/ T4 < 14",
-        condition: "Underactive Thyroid",
-        recommendation: "2-3 Brazil nuts (natural source of selenium)"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Thyroid Support",
-        labInput: "T3 < 4.2/ T4 > 14",
-        condition: "Poor thyroid conversion (T4 to T3)",
-        recommendation: "Zinc (15 - 30 mg), magnesium (200-400 mg), B vitamins"
-      },
-      
-      // Gut Health Support
-      {
-        category: "Supplements",
-        subcategory: "Gut Health Support",
-        historyInput: "Hx of bloating/GERD/abnormal BM's/IBS",
-        condition: "Bloating or dysbiosis",
-        recommendation: "Probiotics (lactobacillus and bifidobacterium strains), Probiotic foods (yogurt, kimchie, saurkraut), digestive enzymes"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Gut Health Support",
-        historyInput: "Hx of bloating/GERD/constipation/IBS",
-        condition: "Bloating or dysbiosis",
-        recommendation: "Hydration protocol (oz = body weight/2)"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Gut Health Support",
-        historyInput: "Hx of cholecystectomy/bloating",
-        condition: "Bloating or dysbiosis",
-        recommendation: "Bile acids",
-        notes: "to be taken with the meal",
-        indications: "helps to break down fats in a meal to help with digestion"
-      },
-      
-      // Blood Sugar Support
-      {
-        category: "Supplements",
-        subcategory: "Blood Sugar Support",
-        labInput: "A1C > 5.2",
-        condition: "Elevated A1C",
-        recommendation: "Berberine (600mg BID)",
-        notes: "activates AMPK enzyme",
-        indications: "helps with insulin sensitivity, inc glycolysis/reduces absorption of LDL/TG in gut/ balances microbiome"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Blood Sugar Support",
-        historyInput: "PCOS",
-        labInput: "A1C > 5.2",
-        condition: "Elevated A1C/PCOS",
-        recommendation: "Myoinositol/D chiro insositol 40:1 (PCOSense or Inosicare OM)",
-        indications: "helps with glucose balance and elevated T"
-      },
-      
-      // Metabolic Support
-      {
-        category: "Supplements",
-        subcategory: "Metabolic Support",
-        historyInput: "if on statin/family hx of CAD",
-        condition: "Metabolic syndrome",
-        recommendation: "CoQ 10 (200mg daily)",
-        notes: "Especially if on a statin"
-      },
-      {
-        category: "Supplements",
-        subcategory: "Metabolic Support",
-        labInput: "Uric acid > 327",
-        condition: "Elevated Uric Acid",
-        recommendation: "Vit C 500mg daily",
-        notes: "helps with uric acid clearance"
-      },
-      
-      // HRT
-      {
-        category: "HRT",
-        subcategory: "Estrogen",
-        historyInput: "Low estrogen symptoms",
-        condition: "Low estrogen",
-        recommendation: "Estradiol patch, Estrogel"
-      },
-      {
-        category: "HRT",
-        subcategory: "Estrogen",
-        historyInput: "Low estrogen symptoms",
-        condition: "Low estrogen",
-        recommendation: "Compounded estrogen cream (Biest)"
-      },
-      {
-        category: "HRT",
-        subcategory: "Estrogen",
-        historyInput: "Hx of vaginal dryness",
-        condition: "Vaginal dryness",
-        recommendation: "Compounded estriol cream 1mg"
-      },
-      {
-        category: "HRT",
-        subcategory: "Estrogen",
-        historyInput: "Hx of vaginal dryness",
-        condition: "Vaginal dryness",
-        recommendation: "Estring, Vagifem"
-      },
-      
-      // Progesterone
-      {
-        category: "HRT",
-        subcategory: "Progesterone",
-        historyInput: "Low progesterone symptoms",
-        condition: "Low progesterone",
-        recommendation: "Micronized progesterone (100-200 mg at bedtime)"
-      },
-      {
-        category: "HRT",
-        subcategory: "Progesterone",
-        historyInput: "Low progesterone symptoms",
-        condition: "Low progesterone",
-        recommendation: "Compounded progesterone cream (20-40mg hs or BID)"
-      },
-      
-      // Testosterone
-      {
-        category: "HRT",
-        subcategory: "Testosterone",
-        historyInput: "Low testosterone symptoms",
-        condition: "Low testosterone",
-        recommendation: "Low-dose testosterone cream or gel"
-      },
-      
-      // DHEA
-      {
-        category: "HRT",
-        subcategory: "DHEA",
-        labInput: "DHEA < 5.5",
-        condition: "Low DHEA",
-        recommendation: "Sublingual DHEA (2.5-10 mg/day, titrate as needed)"
       },
       
       // Mindset
@@ -1079,219 +1116,9 @@ function getMicrohabitsData() {
         historyInput: "Negative self-talk",
         condition: "Low self compassion",
         recommendation: "Dr. Kristen Neff self-compassion exercises"
-      },
-      {
-        category: "Mindset",
-        subcategory: "Pefection",
-        historyInput: "Perfectionism tendencies",
-        condition: "Perfectionism",
-        recommendation: "Focus on 'good enough' rather than perfect"
       }
     ]
   };
 }
 
 export default LifestyleIntakeQuestionnaire;
-
-// Introduction screen component
-const IntroScreen = ({ onStart }) => {
-  return (
-    <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
-      <h1 className="text-3xl font-bold text-center mb-6 text-indigo-700">Lifestyle Microhabits Assessment</h1>
-      <div className="text-center mb-8">
-        <p className="text-lg mb-4">
-          Welcome to your personalized lifestyle assessment. This questionnaire will help identify
-          areas of opportunity for improving your health and wellbeing through targeted microhabits.
-        </p>
-        <p className="mb-6">
-          You'll be asked a series of questions about your health history and lifestyle. 
-          We'll also collect any lab values you may have. Based on your responses, 
-          we'll generate a personalized report with recommendations.
-        </p>
-      </div>
-      <div className="flex justify-center items-center space-x-4 mb-8">
-        <div className="flex flex-col items-center p-4 bg-indigo-50 rounded-lg w-48">
-          <div className="text-4xl text-indigo-500 mb-2">1</div>
-          <div className="text-center font-medium">Answer Lifestyle Questions</div>
-        </div>
-        <div className="text-indigo-400">→</div>
-        <div className="flex flex-col items-center p-4 bg-indigo-50 rounded-lg w-48">
-          <div className="text-4xl text-indigo-500 mb-2">2</div>
-          <div className="text-center font-medium">Enter Lab Values (if available)</div>
-        </div>
-        <div className="text-indigo-400">→</div>
-        <div className="flex flex-col items-center p-4 bg-indigo-50 rounded-lg w-48">
-          <div className="text-4xl text-indigo-500 mb-2">3</div>
-          <div className="text-center font-medium">Review Personalized Recommendations</div>
-        </div>
-      </div>
-      <div className="text-center">
-        <button
-          onClick={onStart}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300 ease-in-out"
-        >
-          Begin Assessment
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Questionnaire form component
-const QuestionnaireForm = ({ 
-  mappingData, 
-  patientData, 
-  categories,
-  subcategories,
-  onHistoryChange, 
-  onNext,
-  onBack 
-}) => {
-  const [expandedCategory, setExpandedCategory] = useState('Lifestyle');
-  
-  // Get all unique history inputs
-  const historyInputs = Array.from(new Set(
-    mappingData
-      .filter(item => item.historyInput)
-      .map(item => ({ 
-        text: item.historyInput,
-        category: item.category || 'Lifestyle',
-        subcategory: item.subcategory || 'General'
-      }))
-  ));
-  
-  // Group history inputs by subcategory
-  const groupedInputs = {};
-  
-  historyInputs.forEach(input => {
-    const category = input.category;
-    const subcategory = input.subcategory;
-    
-    if (!groupedInputs[category]) {
-      groupedInputs[category] = {};
-    }
-    
-    if (!groupedInputs[category][subcategory]) {
-      groupedInputs[category][subcategory] = [];
-    }
-    
-    groupedInputs[category][subcategory].push(input.text);
-  });
-  
-  return (
-    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-2xl font-bold mb-6 text-indigo-700">Health History Questionnaire</h2>
-      <p className="mb-6">
-        Please check all that apply to your current health situation and lifestyle:
-      </p>
-      
-      <div className="mb-6">
-        {categories.map(category => (
-          <div key={category} className="mb-6">
-            <button
-              className="w-full flex justify-between items-center py-3 px-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-left font-semibold"
-              onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
-            >
-              <span>{category}</span>
-              <span>{expandedCategory === category ? '−' : '+'}</span>
-            </button>
-            
-            {expandedCategory === category && (subcategories[category] || []).map(subcategory => {
-              const inputs = (groupedInputs[category] && groupedInputs[category][subcategory]) || [];
-              
-              if (inputs.length === 0) return null;
-              
-              return (
-                <div key={subcategory} className="mt-4 mb-6 pl-4">
-                  <h3 className="text-lg font-medium mb-3 text-indigo-600">{subcategory}</h3>
-                  <div className="space-y-2 pl-4">
-                    {inputs.map(input => (
-                      <div key={input} className="flex items-start">
-                        <input
-                          type="checkbox"
-                          id={`history-${input}`}
-                          className="mt-1"
-                          checked={!!patientData.history[input]}
-                          onChange={(e) => onHistoryChange(input, e.target.checked)}
-                        />
-                        <label htmlFor={`history-${input}`} className="ml-2">
-                          {input}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-      
-      <div className="flex justify-between mt-8">
-        <button
-          onClick={onBack}
-          className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg"
-        >
-          Back
-        </button>
-        <button
-          onClick={onNext}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg"
-        >
-          Continue to Lab Values
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Labs form component
-const LabsForm = ({ mappingData, patientData, onLabChange, onGenerate, onBack }) => {
-  // Get all unique lab inputs
-  const labInputs = Array.from(new Set(
-    mappingData
-      .filter(item => item.labInput)
-      .map(item => item.labInput)
-  ));
-  
-  return (
-    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-2xl font-bold mb-6 text-indigo-700">Lab Values</h2>
-      <p className="mb-6">
-        Please check any lab values that apply based on your most recent test results:
-      </p>
-      
-      <div className="space-y-4">
-        {labInputs.map(input => (
-          <div key={input} className="flex items-start">
-            <input
-              type="checkbox"
-              id={`lab-${input}`}
-              className="mt-1"
-              checked={!!patientData.labs[input]}
-              onChange={(e) => onLabChange(input, e.target.checked)}
-            />
-            <label htmlFor={`lab-${input}`} className="ml-2">
-              {input}
-            </label>
-          </div>
-        ))}
-      </div>
-      
-      <div className="flex justify-between mt-8">
-        <button
-          onClick={onBack}
-          className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg"
-        >
-          Back
-        </button>
-        <button
-          onClick={onGenerate}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg"
-        >
-          Generate Report
-        </button>
-      </div>
-    </div>
-  );
-};
