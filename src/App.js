@@ -1,5 +1,11 @@
 import logo from './logo.svg';
 import './App.css';
+import Logo from './components/Logo';
+import IntroScreen from './components/IntroScreen';
+import QuestionnaireForm from './components/QuestionnaireForm';
+import LabsForm from './components/LabsForm';
+import ReportCard from './components/ReportCard';
+import ReportDocument from './components/ReportDocument';
 
 function App() {
   return (
