@@ -7,9 +7,7 @@ import LabsForm from './components/LabsForm';
 import ReportCard from './components/ReportCard';
 import ReportDocument from './components/ReportDocument';
 import './App.css';
-
-// Placeholder: you should replace this with your actual data loading logic
-import { getMicrohabitsData } from './dataLoader';
+import getMicrohabitsData from './dataLoader';
 
 const App = () => {
   const [step, setStep] = useState('intro');
