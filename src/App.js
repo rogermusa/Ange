@@ -1,13 +1,13 @@
 // src/App.js
 import React, { useState, useEffect } from 'react';
-import Logo from './components/Logo'; // Assuming Logo.jsx exists in ./components/
-import IntroScreen from './components/IntroScreen'; // Assuming IntroScreen.jsx exists in ./components/
-import QuestionnaireForm from './components/QuestionnaireForm'; // Assuming QuestionnaireForm.jsx exists in ./components/
-import LabsForm from './components/LabsForm'; // Assuming LabsForm.jsx exists in ./components/
-import ReportCard from './components/ReportCard'; // Assuming ReportCard.jsx exists in ./components/
-// import ReportDocument from './components/ReportDocument'; // For PDF generation if re-enabled
-import './App.css'; // Assuming App.css exists
-import getMicrohabitsData from './dataLoader'; // This is the updated dataLoader.js
+import Logo from './components/Logo';
+import IntroScreen from './components/IntroScreen';
+import QuestionnaireForm from './components/QuestionnaireForm';
+import LabsForm from './components/LabsForm';
+import ReportCard from './components/ReportCard';
+// import ReportDocument from './components/ReportDocument'; // For PDF generation
+import './App.css';
+import getMicrohabitsData from './dataLoader';
 
 const App = () => {
   const [step, setStep] = useState('intro');
@@ -20,21 +20,17 @@ const App = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
-    // Load the data from dataLoader.js
     const data = getMicrohabitsData();
     setMappingData(data.mappingData);
 
     // --- Logic for QuestionnaireForm categories/subcategories ---
-    // 1. Filter for items that will appear in the questionnaire (those with a non-empty historyInput)
     const questionnaireItems = data.mappingData.filter(item => item.historyInput && String(item.historyInput).trim() !== "");
 
     const categoriesForQuestionnaireSet = new Set();
     const subcategoriesMapForQuestionnaire = {};
 
     questionnaireItems.forEach(item => {
-      // Determine effective category: use item.category or default to 'Lifestyle'
       const effectiveCategory = (item.category && String(item.category).trim() !== "") ? String(item.category).trim() : 'Lifestyle';
-      // Determine effective subcategory: use item.subcategory or default to 'General'
       const effectiveSubcategory = (item.subcategory && String(item.subcategory).trim() !== "") ? String(item.subcategory).trim() : 'General';
 
       categoriesForQuestionnaireSet.add(effectiveCategory);
@@ -47,17 +43,14 @@ const App = () => {
 
     let finalCategories = Array.from(categoriesForQuestionnaireSet);
     
-    // Ensure 'Lifestyle' is present if there are questionnaire items but it wasn't explicitly derived
-    // (though the defaulting logic above should handle this)
     if (questionnaireItems.length > 0 && !categoriesForQuestionnaireSet.has('Lifestyle') && finalCategories.every(cat => cat !== 'Lifestyle')) {
         const hasDefaultedToLifestyle = questionnaireItems.some(item => (!item.category || String(item.category).trim() === ""));
-        if (hasDefaultedToLifestyle) {
+        if (hasDefaultedToLifestyle && !finalCategories.includes('Lifestyle')) { // Check again before pushing
             finalCategories.push('Lifestyle');
         }
     }
-    // If after all processing, no categories are found but there are items, default to Lifestyle
     if (questionnaireItems.length > 0 && finalCategories.length === 0) {
-        finalCategories.push('Lifestyle');
+        finalCategories.push('Lifestyle'); // Fallback if no categories derived but items exist
     }
     
     finalCategories.sort(); 
@@ -66,15 +59,18 @@ const App = () => {
     const finalSubcategories = {};
     finalCategories.forEach(cat => {
       const subs = subcategoriesMapForQuestionnaire[cat] ? Array.from(subcategoriesMapForQuestionnaire[cat]) : [];
+      // Ensure 'General' is added if a category for questionnaire items has no explicit subcategories from data
       finalSubcategories[cat] = (subs.length > 0 ? subs : ['General']).sort();
     });
     setSubcategories(finalSubcategories);
     // --- End of QuestionnaireForm specific logic ---
 
     setDataLoaded(true);
-    // console.log('App.js - Categories Loaded:', finalCategories);
-    // console.log('App.js - Subcategories Loaded:', finalSubcategories);
-    // console.log('App.js - Questionnaire Items Count:', questionnaireItems.length);
+    // For debugging:
+    // console.log('App.js - Categories for Questionnaire:', finalCategories);
+    // console.log('App.js - Subcategories for Questionnaire:', finalSubcategories);
+    // console.log('App.js - Total Questionnaire Items Processed:', questionnaireItems.length);
+    // console.log('App.js - Raw Mapping Data Length:', data.mappingData.length);
 
   }, []);
 
@@ -94,16 +90,14 @@ const App = () => {
     const conditionMap = new Map();
     const recommendationMap = new Map();
     const matchedEntries = [];
-    const scores = {}; // Scores per category and subcategory: scores[category][subcategory] = count
+    const scores = {}; 
 
     mappingData.forEach(entry => {
       let match = false;
       
-      // Check history inputs
       if (entry.historyInput && patientData.history[entry.historyInput]) {
         match = true;
       }
-      // Check lab inputs
       if (entry.labInput && patientData.labs[entry.labInput]) {
         match = true;
       }
@@ -112,7 +106,6 @@ const App = () => {
         const category = (entry.category && String(entry.category).trim() !== "") ? String(entry.category).trim() : 'Lifestyle';
         const subcategory = (entry.subcategory && String(entry.subcategory).trim() !== "") ? String(entry.subcategory).trim() : 'General';
 
-        // Increment scores
         if (!scores[category]) {
           scores[category] = {};
         }
@@ -135,10 +128,11 @@ const App = () => {
               originalEntry: entry 
             });
           } else {
-            // Optionally, if a condition can be triggered by multiple inputs, append sources
             const existingCond = conditionMap.get(conditionKey);
-            if (!String(existingCond.source).includes(matchedInputIdentifier)) {
+            if (existingCond.source && matchedInputIdentifier !== 'N/A' && !String(existingCond.source).includes(matchedInputIdentifier)) {
                 existingCond.source += `, ${matchedInputIdentifier}`;
+            } else if (!existingCond.source && matchedInputIdentifier !== 'N/A') {
+                existingCond.source = matchedInputIdentifier;
             }
           }
         }
@@ -186,7 +180,6 @@ const App = () => {
       case 'intro':
         return <IntroScreen patientName={patientData.name} onPatientNameChange={handlePatientNameChange} onStart={() => setStep('questionnaire')} />;
       case 'questionnaire':
-        // Pass only the relevant part of mappingData if QuestionnaireForm doesn't need all of it
         return <QuestionnaireForm 
                   mappingData={mappingData.filter(item => item.historyInput && String(item.historyInput).trim() !== "")} 
                   patientData={patientData} 
@@ -197,7 +190,6 @@ const App = () => {
                   onBack={() => setStep('intro')} 
                 />;
       case 'labs':
-        // Pass only the relevant part of mappingData if LabsForm doesn't need all of it
         return <LabsForm 
                   mappingData={mappingData.filter(item => item.labInput && String(item.labInput).trim() !== "")} 
                   patientData={patientData} 
