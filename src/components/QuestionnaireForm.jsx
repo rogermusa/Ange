@@ -43,13 +43,13 @@ const QuestionnaireForm = ({
     }
 
     const inputText = input.text || input;
-    const displayText = typeof inputText === 'string' ? 
-      inputText.charAt(0).toUpperCase() + inputText.slice(1) : 
-      inputText;
+    // Ensure displayText is derived correctly if input is an object or string
+    const displayTextValue = typeof input === 'object' && input.displayText ? input.displayText : (typeof inputText === 'string' ? inputText.charAt(0).toUpperCase() + inputText.slice(1) : inputText);
+
 
     groupedInputs[category][subcategory].push({
-      value: inputText,
-      display: displayText
+      value: inputText, // This should be the original historyInput string
+      display: displayTextValue
     });
   });
 
@@ -74,16 +74,17 @@ const QuestionnaireForm = ({
             </button>
 
             {expandedCategory === category && (subcategories[category] || []).map(subcategory => {
-              const inputs = (groupedInputs[category] && groupedInputs[category][subcategory]) || [];
-              if (inputs.length === 0) return null;
+              const inputsToRender = (groupedInputs[category] && groupedInputs[category][subcategory]) || [];
+              if (inputsToRender.length === 0) return null;
 
               return (
                 <div key={subcategory} className="mt-4 mb-6 pl-4">
                   <h3 className="text-lg font-medium mb-3 text-coral-dark border-b border-coral-light pb-1">{subcategory}</h3>
                   <div className="space-y-3 pl-4">
-                    {inputs.map(input => {
-                      const inputValue = typeof input === 'object' ? (input.value || input.text) : input;
-                      const displayText = typeof input === 'object' ? (input.display || input.displayText || inputValue) : input;
+                    {inputsToRender.map(inputObj => {
+                      // inputObj is expected to be { value: originalText, display: displayText }
+                      const inputValue = inputObj.value; 
+                      const displayText = inputObj.display;
                       return (
                         <div key={inputValue} className="flex items-start transition duration-200 ease-in-out hover:bg-cream-light p-2 rounded-lg">
                           <input
