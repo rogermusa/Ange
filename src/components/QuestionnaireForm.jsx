@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 
 const QuestionnaireForm = ({ 
-  mappingData, // This will now be pre-filtered by App.js to only include historyInput items
+  mappingData, 
   patientData, 
   categories,
   subcategories,
@@ -12,33 +12,25 @@ const QuestionnaireForm = ({
 }) => {
   const [expandedCategory, setExpandedCategory] = useState(null);
 
-  // Effect to set the initial expanded category once categories are loaded
   useEffect(() => {
     if (categories && categories.length > 0 && expandedCategory === null) {
       setExpandedCategory(categories[0]);
     }
   }, [categories, expandedCategory]);
 
-
-  // Prepare inputs for the questionnaire.
-  // mappingData is already filtered for historyInput items by App.js
   const historyQuestionnaireItems = mappingData.map(item => {
-    let displayText = String(item.historyInput).trim(); // Ensure it's a string and trim
+    let displayText = String(item.historyInput).trim(); 
     if (displayText.length > 0) {
       displayText = displayText.charAt(0).toUpperCase() + displayText.slice(1);
     }
     return { 
-      text: String(item.historyInput).trim(), // The original value for state key
-      displayText: displayText, // For display
-      // Effective category/subcategory determination is now primarily handled in App.js
-      // but we can use the same defaults here for consistency if mappingData items were somehow malformed
-      // (though App.js filtering should prevent that)
+      text: String(item.historyInput).trim(), 
+      displayText: displayText, 
       category: (item.category && String(item.category).trim() !== "") ? String(item.category).trim() : 'Lifestyle', 
       subcategory: (item.subcategory && String(item.subcategory).trim() !== "") ? String(item.subcategory).trim() : 'General'
     };
   });
 
-  // Group these history inputs by their effective category and subcategory
   const groupedInputs = {};
   historyQuestionnaireItems.forEach(input => {
     const category = input.category;
@@ -51,7 +43,6 @@ const QuestionnaireForm = ({
       groupedInputs[category][subcategory] = [];
     }
     
-    // Avoid adding duplicate input objects if the text value is the same within the same cat/subcat
     if (!groupedInputs[category][subcategory].some(i => i.value === input.text)) {
         groupedInputs[category][subcategory].push({
             value: input.text,
@@ -60,8 +51,13 @@ const QuestionnaireForm = ({
     }
   });
   
-  // `categories` prop from App.js should be the definitive list of categories to display
   const displayCategories = Array.isArray(categories) ? categories : [];
+
+  useEffect(() => {
+    if (expandedCategory === null && displayCategories.length > 0) {
+      setExpandedCategory(displayCategories[0]);
+    }
+  }, [displayCategories, expandedCategory]);
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-8 border border-coral-light">
@@ -85,10 +81,9 @@ const QuestionnaireForm = ({
             </button>
 
             {expandedCategory === category && 
-             subcategories && // Ensure subcategories object exists
+             subcategories && 
              Array.isArray(subcategories[category]) && 
              subcategories[category].map(subcategory => {
-              // Use the groupedInputs derived from historyQuestionnaireItems
               const inputsToRender = (groupedInputs[category] && groupedInputs[category][subcategory]) || [];
               if (inputsToRender.length === 0) return null;
 
@@ -99,7 +94,6 @@ const QuestionnaireForm = ({
                     {inputsToRender.map(inputObj => {
                       const inputValue = inputObj.value; 
                       const displayText = inputObj.display;
-                      // Create a more robust ID for HTML elements
                       const inputId = `history-${category}-${subcategory}-${inputValue}`.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
                       return (
                         <div key={inputId} className="flex items-start transition duration-200 ease-in-out hover:bg-cream-light p-2 rounded-lg">
@@ -107,7 +101,7 @@ const QuestionnaireForm = ({
                             type="checkbox"
                             id={inputId}
                             className="mt-1 h-4 w-4 text-coral focus:ring-coral rounded"
-                            checked={!!patientData.history[inputValue]} // inputValue is the key for patientData.history
+                            checked={!!patientData.history[inputValue]} 
                             onChange={(e) => onHistoryChange(inputValue, e.target.checked)}
                           />
                           <label htmlFor={inputId} className="ml-3 text-coral-dark">
@@ -143,53 +137,3 @@ const QuestionnaireForm = ({
 };
 
 export default QuestionnaireForm;
-
-// --- Ensure you have these other component files in ./components/ ---
-// components/Logo.jsx
-// components/IntroScreen.jsx
-// components/LabsForm.jsx
-// components/ReportCard.jsx
-// components/ReportDocument.jsx (if used)
-
-// Example for components/Logo.jsx (if you don't have it)
-// const Logo = () => <div className="text-center py-4"><h1 className="text-4xl font-bold text-coral">AppLogo</h1></div>;
-// export default Logo;
-
-// Example for components/IntroScreen.jsx (basic structure)
-// const IntroScreen = ({ patientName, onPatientNameChange, onStart }) => (
-//   <div>
-//     <h1>Intro</h1>
-//     <input type="text" value={patientName} onChange={e => onPatientNameChange(e.target.value)} placeholder="Patient Name" />
-//     <button onClick={onStart} disabled={!patientName.trim()}>Start</button>
-//   </div>
-// );
-// export default IntroScreen;
-
-// Example for components/LabsForm.jsx (basic structure)
-// const LabsForm = ({ mappingData, patientData, onLabChange, onGenerate, onBack }) => {
-//   const labItems = mappingData.filter(item => item.labInput && String(item.labInput).trim() !== "");
-//   return (
-//     <div>
-//       <h2>Labs</h2>
-//       {labItems.map(item => (
-//         <div key={item.labInput}>
-//           <input type="checkbox" id={item.labInput} checked={!!patientData.labs[item.labInput]} onChange={e => onLabChange(item.labInput, e.target.checked)} />
-//           <label htmlFor={item.labInput}>{item.labInput}</label>
-//         </div>
-//       ))}
-//       <button onClick={onBack}>Back</button>
-//       <button onClick={onGenerate}>Generate Report</button>
-//     </div>
-//   );
-// };
-// export default LabsForm;
-
-// Example for components/ReportCard.jsx (basic structure)
-// const ReportCard = ({ reportData, patientData, onRestart }) => (
-//   <div>
-//     <h1>Report for {patientData.name}</h1>
-//     <button onClick={onRestart}>Restart</button>
-//   </div>
-// );
-// export default ReportCard;
-
