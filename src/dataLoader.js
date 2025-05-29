@@ -1,6 +1,9 @@
 // src/dataLoader.js
 
 export default function getMicrohabitsData() {
+  // This data should be an exact representation of your CSV file.
+  // Ensure all columns (category, subcategory, historyInput, labInput, condition, recommendation, notes, indications)
+  // are correctly represented for each item.
   return {
     mappingData: [
       {
@@ -47,7 +50,7 @@ export default function getMicrohabitsData() {
         category: "Lifestyle",
         subcategory: "Stress Management",
         historyInput: "Persistent worry/anxiety",
-        labInput: "DHEA level below 4.5",
+        labInput: "DHEA level below 4.5", // This item has both, but QuestionnaireForm focuses on historyInput
         condition: "Persistent worry/anxiety",
         recommendation: "Cognitive Behavioral Therapy (CBT) or guided relaxation exercises",
         notes: "Refer to psychologist or therapist",
@@ -266,9 +269,9 @@ export default function getMicrohabitsData() {
       {
         category: "Lifestyle",
         subcategory: "Exercise",
-        historyInput: "Generally low levels of energy",
+        historyInput: "Generally low levels of energy", // Note: This historyInput appears under Stress Management too
         labInput: null,
-        condition: "Low physical activity",
+        condition: "Low physical activity", // Different condition than the Stress Management one
         recommendation: "Incorporate strength training at least twice a week",
         notes: null,
         indications: null
@@ -353,6 +356,7 @@ export default function getMicrohabitsData() {
         notes: null,
         indications: null
       },
+      // Lab Inputs (These will be handled by LabsForm.jsx, not QuestionnaireForm.jsx)
       {
         category: "Labs",
         subcategory: "Blood Sugar",
